@@ -39,6 +39,7 @@
 	"config" : {
 		"return_link" : "https://www.pixcade.com/",
 		"use_return_link" : "true",
-		"protocol_override" : "true"
+		"protocol_override" : "true",
+		"allow_all_access" : "false"
 	}
 }

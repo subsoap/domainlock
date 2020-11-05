@@ -13,6 +13,16 @@ end
 local function check_data()
 	local top_check = html5.run("self === top")
 	local time_now = socket.gettime() -- just use system time
+
+	-- you might enable allow_all_access to bait pirate sites into hosting your new game so you can direct them to your own site later
+	-- it's dangerous though and FOR SURE should not be used in internal manifests for obvious reasons :)
+	if domainlock.data.config.allow_all_access == "true" then
+		if sys.get_engine_info().is_debug then print("DomainLock: allow_all_access is enabled, this is dangerous to keep on. Allowed!") end
+		msg.post(".", "ready")
+		domainlock.ready = true
+		domainlock.allowed = true
+		return true		
+	end
 	
 	-- protocol_override is mostly so your games can work in itch.io desktop client
 	-- protocol check doesn't work with cross origin domains so don't try to do it if there is an iframe embed
