@@ -50,7 +50,6 @@ local function check_data()
 					return false
 				end
 			end
-			
 			msg.post(".", "ready")
 			domainlock.ready = true
 			domainlock.allowed = true
@@ -128,23 +127,27 @@ local function fetch_manifest()
 	end
 
 	if not domainlock.use_external_manifest then
+		if sys.get_engine_info().is_debug then print("DomainLock: Don't use external manifest set") end
 		local data, error = sys.load_resource("/custom_resources/domainlock.json")
 		if data then
 			local valid_json, data_table = json_decode(data)
 			if valid_json then
-				domainlock.data = body
+				domainlock.data = data_table
 				check_data()
+				return true
 			else
 				print("DomainLock: invalid JSON data of internal manifest")
 				msg.post(".", "ready")
 				domainlock.ready = true
 				domainlock.allowed = false
+				return false
 			end
 		else
 			print("DomainLock: load resource error ", error)
 			msg.post(".", "ready")
 			domainlock.ready = true
 			domainlock.allowed = false
+			return false
 		end
 	end
 	
@@ -158,9 +161,11 @@ local function fetch_manifest()
 				msg.post(".", "ready")
 				domainlock.ready = true
 				domainlock.allowed = false
+				return false
+			else
+				print("DomainLock: Couldn't get manifest. Retrying!")
+				msg.post(".", "fetch_manifest")				
 			end
-			print("DomainLock: Couldn't get manifest. Retrying!")
-			msg.post(".", "fetch_manifest")
 		else
 			local valid_json, body = json_decode(response.response)
 			if valid_json then
@@ -172,6 +177,7 @@ local function fetch_manifest()
 				msg.post(".", "ready")
 				domainlock.ready = true
 				domainlock.allowed = false
+				return false
 			end
 		end
 	end, nil, nil, {timeout = domainlock.retry_time})
