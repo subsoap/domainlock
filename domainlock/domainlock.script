@@ -1,0 +1,217 @@
+local domainlock = require("domainlock.domainlock")
+
+local function json_decode(json_file)
+	return pcall(json.decode, json_file)
+end
+
+local function http_request(url, method, callback, headers, post_data, options)
+	pcall(http.request, url, method, callback, headers, post_data, options)
+end
+
+
+
+local function check_data()
+	local top_check = html5.run("self === top")
+	local time_now = socket.gettime() -- just use system time
+	
+	-- protocol_override is mostly so your games can work in itch.io desktop client
+	-- protocol check doesn't work with cross origin domains so don't try to do it if there is an iframe embed
+	if top_check == "true" and domainlock.data.config.protocol_override == "true" then
+		local protocol = html5.run("location.protocol")
+		if domainlock.data.override_protocols[protocol] == "true" then
+			if sys.get_engine_info().is_debug then print("DomainLock: protocol override active. Allowed!") end
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = true
+			return true
+		end
+	end
+	
+	if top_check ~= "true" then
+		if sys.get_engine_info().is_debug then print("DomainLock: iframe embed detected.") end
+		local document_referrer = html5.run("new URL(document.referrer).hostname")
+		if domainlock.data.domains[document_referrer] and domainlock.data.domains[document_referrer].allow_embed == "true" then
+			if domainlock.data.domains[document_referrer].expires then
+				if time_now > tonumber(domainlock.data.domains[document_referrer].expires) then
+					if sys.get_engine_info().is_debug then print("DomainLock: This domain listing is expired, do not allow.") end
+					msg.post(".", "ready")
+					domainlock.ready = true
+					domainlock.allowed = false
+					return false
+				end
+			end
+			
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = true
+			return true
+		else
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = false
+			return false
+		end
+	end
+
+	if top_check == "true" then
+		if sys.get_engine_info().is_debug then print("DomainLock: Non-iframe detected.") end
+		local current_domain = html5.run("window.top.location.host")
+		if domainlock.data.domains[current_domain] and domainlock.data.domains[current_domain].allow_host == "true" then
+			if domainlock.data.domains[current_domain].expires then
+				if time_now > tonumber(domainlock.data.domains[current_domain].expires) then
+					msg.post(".", "ready")
+					domainlock.ready = true
+					domainlock.allowed = false
+					return false
+				end
+			end			
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = true
+			return true
+		else
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = false
+			return false
+		end
+	end
+
+	
+	if sys.get_engine_info().is_debug then print("DomainLock: Warning - this should never be printed. What happened!?") end
+	print(top_check)
+end
+
+local function test_localhost_manifest()
+	local data, error = sys.load_resource("/custom_resources/domainlock.json")
+	if data then
+		local valid_json, data_table = json_decode(data)
+		domainlock.data = data_table
+		if sys.get_engine_info().is_debug then
+			print("DomainLock: Testing internal manifest ", valid_json)
+			pprint(data_table)
+		end
+	else
+		print(error)
+	end
+end
+
+local function fetch_manifest()
+	if domainlock.localhost_override then
+		if html5.run("self === top") == "true" and html5.run("window.location.hostname === 'localhost'") == "true" then
+			if sys.get_engine_info().is_debug then print("DomainLock: localhost override active. Allowed!") end
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = true
+			test_localhost_manifest()
+			return true
+		end
+	else
+		if html5.run("self === top") == "true" and html5.run("window.location.hostname === 'localhost'") == "true" then
+			if sys.get_engine_info().is_debug then print("DomainLock: localhost override not allowed!") end
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = false
+			test_localhost_manifest()
+			return false
+		end
+	end
+
+	if not domainlock.use_external_manifest then
+		local data, error = sys.load_resource("/custom_resources/domainlock.json")
+		if data then
+			local valid_json, data_table = json_decode(data)
+			if valid_json then
+				domainlock.data = body
+				check_data()
+			else
+				print("DomainLock: invalid JSON data of internal manifest")
+				msg.post(".", "ready")
+				domainlock.ready = true
+				domainlock.allowed = false
+			end
+		else
+			print("DomainLock: load resource error ", error)
+			msg.post(".", "ready")
+			domainlock.ready = true
+			domainlock.allowed = false
+		end
+	end
+	
+	if not domainlock.manifest_link then print("DomainLock: domainlock.manifest_link is not set") return false end
+	
+	http_request(domainlock.manifest_link, "GET", function(self, id, response)
+
+		if response.status ~= 200 and response.status ~= 304 then
+			domainlock.retry_times = domainlock.retry_times + 1
+			if domainlock.retry_times >= domainlock.retry_max then
+				msg.post(".", "ready")
+				domainlock.ready = true
+				domainlock.allowed = false
+			end
+			print("DomainLock: Couldn't get manifest. Retrying!")
+			msg.post(".", "fetch_manifest")
+		else
+			local valid_json, body = json_decode(response.response)
+			if valid_json then
+				if sys.get_engine_info().is_debug then print("DomainLock: Got external manifest and JSON is valid.") end
+				domainlock.data = body
+				check_data()
+			else
+				print("DomainLock: Invalid JSON data of external manifest")
+				msg.post(".", "ready")
+				domainlock.ready = true
+				domainlock.allowed = false
+			end
+		end
+	end, nil, nil, {timeout = domainlock.retry_time})
+end
+
+
+function init(self)
+	if sys.get_sys_info().system_name ~= "HTML5" then domainlock.allow = true return false end
+	if domainlock.debug_override and sys.get_engine_info().is_debug then domainlock.allow = true return false end
+	
+	msg.post(".", "fetch_manifest") -- do this to delay init, give time to set the domainlock.manifest_link
+end
+
+function final(self)
+	-- Add finalization code here
+	-- Remove this function if not needed
+end
+
+function update(self, dt)
+
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("fetch_manifest") then
+		fetch_manifest()
+	end
+	if message_id == hash("ready") then
+		if domainlock.allowed == false and domainlock.data.config.use_return_link == "true" then
+			if html5.run("self === top") ~= "true" then
+				local document_referrer = html5.run("new URL(document.referrer).hostname")
+				local current_domain = html5.run("location.hostname")
+				if document_referrer ~= current_domain then
+					-- can't redirect in this case, so don't even try
+					-- make sure you brick your game and include a link to your site clearly in text :)
+					return false
+				end
+			end
+			-- you should always brick your game if it is denied as embeds of different origin can't redirect the top
+			if sys.get_engine_info().is_debug then print("DomainLock: Not allowed, using return link.") end
+			html5.run("window.top.location.href = \"" .. domainlock.data.config.return_link .. "\"")
+		end
+	end
+end
+
+function on_input(self, action_id, action)
+	-- Add input-handling code here
+	-- Remove this function if not needed
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Remove this function if not needed
+end

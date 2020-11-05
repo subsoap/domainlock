@@ -1,0 +1,44 @@
+{
+	"domains" : {
+		"pixcade.com": {
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "never"
+		},
+		"www.pixcade.com": {
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "never"
+		},
+		"solitaire.io": {
+			"allow_host" : "true",
+			"allow_embed" : "true",
+		},
+		"game.itch": {
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "1730803505",
+			"note" : "itch.io desktop client hostname, expires in 2024"
+		},
+		"v6p9d9t4.ssl.hwcdn.net": {
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "1730803505, expires in 2024",
+			"note" : "itch.io CDN"
+		},
+		"pixcade.itch.io": {
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "1730803505",
+			"note" : "Your itch.io subdomain, used with document.referrer, expires in 2024"
+		}		
+	},
+	"override_protocols" : {
+		"itch-cave:" : "true",
+	},
+	"config" : {
+		"return_link" : "https://www.pixcade.com/",
+		"use_return_link" : "true",
+		"protocol_override" : "true"
+	}
+}

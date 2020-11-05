@@ -1,0 +1,34 @@
+{
+	"domains" : {
+		"pixcade.com": {
+			"subdomains" : ["*"],
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "never"
+		},
+		"solitaire.io": {
+			"subdomains" : ["*"],
+			"allow_host" : "true",
+			"allow_embed" : "true",
+			"expires" : "1604455516"
+		}
+	},
+	"protocols" : {
+		"http:" : {
+			"allow" : "true",
+			"override" : "false"
+		},
+		"https:" : {
+			"allow" : "true",
+			"override" : "false"
+		},
+		"itch-cave:" : {
+			"allow" : "true",
+			"override" : "true"
+		}
+	},
+	"config" : {
+		"return_link" : "htts://www.pixcade.com/",
+		"use_return_link" : "true"
+	}
+}
