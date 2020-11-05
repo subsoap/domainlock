@@ -2,13 +2,11 @@
 	"domains" : {
 		"pixcade.com": {
 			"allow_host" : "true",
-			"allow_embed" : "true",
-			"expires" : "never"
+			"allow_embed" : "true"
 		},
 		"www.pixcade.com": {
 			"allow_host" : "true",
-			"allow_embed" : "true",
-			"expires" : "never"
+			"allow_embed" : "true"
 		},
 		"solitaire.io": {
 			"allow_host" : "true",
