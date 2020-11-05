@@ -23,8 +23,8 @@
 		"v6p9d9t4.ssl.hwcdn.net": {
 			"allow_host" : "true",
 			"allow_embed" : "true",
-			"expires" : "1730803505, expires in 2024",
-			"note" : "itch.io CDN"
+			"expires" : "1730803505",
+			"note" : "itch.io CDN, expires in 2024"
 		},
 		"pixcade.itch.io": {
 			"allow_host" : "true",
