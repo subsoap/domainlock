@@ -28,7 +28,7 @@
 		}
 	},
 	"config" : {
-		"return_link" : "htts://www.pixcade.com/",
+		"return_link" : "https://www.pixcade.com/",
 		"use_return_link" : "true"
 	}
 }
